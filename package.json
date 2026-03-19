@@ -1,0 +1,24 @@
+{
+  "name": "deadenv",
+  "version": "0.1.0",
+  "description": "Find unused and missing environment variables across Node.js, Python, C#, and Flutter projects.",
+  "type": "module",
+  "bin": {
+    "deadenv": "./bin/deadenv.js"
+  },
+  "scripts": {
+    "test": "node --test"
+  },
+  "keywords": [
+    "env",
+    "dotenv",
+    "cli",
+    "developer-tools",
+    "static-analysis",
+    "flutter",
+    "python",
+    "csharp",
+    "nodejs"
+  ],
+  "license": "MIT"
+}
