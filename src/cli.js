@@ -51,6 +51,7 @@ export async function runCli(args) {
   console.log(`Referenced env vars: ${result.referenced.length}`);
   console.log(`Unused env vars: ${result.unused.length}`);
   console.log(`Missing env vars: ${result.missing.length}`);
+  console.log(`Coverage: ${result.coverage}%`);
 
   if (Object.keys(result.envFiles).length) {
     console.log('\nEnv files');

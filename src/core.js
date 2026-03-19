@@ -31,9 +31,7 @@ export function parseDotenv(content) {
 export function extractEnvRefs(content) {
   const refs = new Set();
   for (const pattern of CODE_PATTERNS) {
-    for (const match of content.matchAll(pattern)) {
-      refs.add(match[1]);
-    }
+    for (const match of content.matchAll(pattern)) refs.add(match[1]);
   }
   return refs;
 }
@@ -42,11 +40,8 @@ function walk(dir, collected = []) {
   for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
     if (DEFAULT_IGNORE_DIRS.has(entry.name)) continue;
     const fullPath = path.join(dir, entry.name);
-    if (entry.isDirectory()) {
-      walk(fullPath, collected);
-      continue;
-    }
-    collected.push(fullPath);
+    if (entry.isDirectory()) walk(fullPath, collected);
+    else collected.push(fullPath);
   }
   return collected;
 }
@@ -88,6 +83,7 @@ export function analyzeProject(rootDir, options = {}) {
   const unused = uniqueSorted([...definedVars].filter((key) => !referencedVars.has(key)));
   const missing = uniqueSorted([...referencedVars].filter((key) => !definedVars.has(key)));
   const referenced = uniqueSorted(referencedVars);
+  const coverage = referenced.length ? Math.round(((referenced.length - missing.length) / referenced.length) * 100) : 100;
 
   return {
     rootDir,
@@ -96,6 +92,7 @@ export function analyzeProject(rootDir, options = {}) {
     referenced,
     unused,
     missing,
+    coverage,
     referenceLocations: Object.fromEntries(
       [...referenceLocations.entries()].map(([key, files]) => [key, uniqueSorted(files)])
     )
