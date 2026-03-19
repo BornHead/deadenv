@@ -12,7 +12,7 @@ function printList(title, values) {
 }
 
 function printUsage() {
-  console.log(`deadenv\n\nUsage:\n  deadenv scan [path] [--json]\n\nExamples:\n  deadenv scan\n  deadenv scan . --json\n  deadenv scan ../my-app\n`);
+  console.log(`deadenv\n\nUsage:\n  deadenv scan [path] [--json]\n  deadenv example [path]\n\nExamples:\n  deadenv scan\n  deadenv scan . --json\n  deadenv example .\n  deadenv scan ../my-app\n`);
 }
 
 export async function runCli(args) {
@@ -22,7 +22,7 @@ export async function runCli(args) {
     return;
   }
 
-  if (command !== 'scan') {
+  if (command !== 'scan' && command !== 'example') {
     throw new Error(`Unknown command: ${command}`);
   }
 
@@ -35,6 +35,11 @@ export async function runCli(args) {
   }
 
   const result = analyzeProject(rootDir);
+
+  if (command === 'example') {
+    for (const key of result.referenced) console.log(`${key}=`);
+    return;
+  }
 
   if (json) {
     console.log(JSON.stringify(result, null, 2));

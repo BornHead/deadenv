@@ -12,52 +12,49 @@ It currently detects common patterns in:
 - C# / .NET
 - Flutter / Dart
 
-## Why this might be useful
+## Why
 
-Most projects slowly accumulate:
+Most projects quietly accumulate config drift:
 - dead `.env` keys no one uses anymore
-- missing variables referenced in code but not documented
-- multiple `.env` files with unclear ownership
+- missing variables referenced in code but never documented
+- `.env.example` files that no longer match reality
 
-`deadenv` gives you a quick signal before config drift becomes a deployment bug.
+`deadenv` is built to surface those problems quickly.
 
 ## Install
 
 ```bash
-npm install -g deadenv
+npm install
 ```
 
-Or run locally:
+## Usage
+
+Scan a project:
 
 ```bash
 node ./bin/deadenv.js scan .
 ```
 
-## Usage
+JSON output:
 
 ```bash
-deadenv scan .
-deadenv scan . --json
+node ./bin/deadenv.js scan . --json
+```
+
+Generate a starter example file from referenced keys:
+
+```bash
+node ./bin/deadenv.js example .
 ```
 
 ## Example output
 
 ```text
-deadenv scan: /Users/you/my-app
+deadenv scan: /project
 Detected env files: 1
 Referenced env vars: 4
 Unused env vars: 1
 Missing env vars: 2
-
-Env files
-  - .env (3)
-
-Unused env vars
-  - LEGACY_TOKEN
-
-Missing env vars
-  - OPENAI_API_KEY
-  - SENTRY_DSN
 ```
 
 ## Detected patterns
@@ -77,22 +74,24 @@ Missing env vars
 - `String.fromEnvironment('MY_KEY')`
 - `Platform.environment['MY_KEY']`
 
-## Roadmap
+## 한국어
 
-- support `.env.example` comparison mode
-- support custom ignore patterns
-- detect more framework-specific accessors
-- CI-friendly exit codes
-- GitHub Action wrapper
+**deadenv**는 코드에서 실제로 참조하는 환경변수와 `.env` 파일에 정의된 값을 비교해 사용하지 않는 키와 빠진 키를 찾아주는 CLI입니다.
 
-## Why this repo has star potential
+### 사용법
 
-This is the kind of tool developers understand in 10 seconds:
-- small install surface
-- immediately useful
-- easy to demo in a GIF
-- solves a real everyday annoyance
+```bash
+node ./bin/deadenv.js scan .
+node ./bin/deadenv.js example .
+```
 
-## License
+## 中文
 
-MIT
+**deadenv** 是一个用来比较代码中的环境变量引用与 `.env` 文件定义的 CLI，可找出未使用和缺失的变量。
+
+### 用法
+
+```bash
+node ./bin/deadenv.js scan .
+node ./bin/deadenv.js example .
+```
