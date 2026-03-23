@@ -9,6 +9,9 @@
   "scripts": {
     "test": "node --test"
   },
+  "dependencies": {
+    "@babel/parser": "^7.28.4"
+  },
   "keywords": [
     "env",
     "dotenv",

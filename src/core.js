@@ -1,13 +1,13 @@
 import fs from 'node:fs';
 import path from 'node:path';
+import { parse } from '@babel/parser';
 
 const DEFAULT_ENV_FILES = ['.env', '.env.local', '.env.development', '.env.production', '.env.test', '.env.example'];
 const DEFAULT_IGNORE_DIRS = new Set(['.git', 'node_modules', 'dist', 'build', '.next', '.nuxt', 'coverage', '.dart_tool', 'bin', 'obj']);
 const CODE_FILE_EXTENSIONS = new Set(['.js', '.jsx', '.ts', '.tsx', '.mjs', '.cjs', '.py', '.cs', '.dart']);
+const JS_LIKE_EXTENSIONS = new Set(['.js', '.jsx', '.ts', '.tsx', '.mjs', '.cjs']);
 
-const CODE_PATTERNS = [
-  /process\.env\.([A-Z][A-Z0-9_]*)/g,
-  /process\.env\[['"]([A-Z][A-Z0-9_]*)['"]\]/g,
+const NON_JS_CODE_PATTERNS = [
   /os\.getenv\(['"]([A-Z][A-Z0-9_]*)['"]/g,
   /os\.environ\[['"]([A-Z][A-Z0-9_]*)['"]\]/g,
   /Environment\.GetEnvironmentVariable\(['"]([A-Z][A-Z0-9_]*)['"]\)/g,
@@ -28,12 +28,92 @@ export function parseDotenv(content) {
   return keys;
 }
 
-export function extractEnvRefs(content) {
+function isIdentifier(node, name) {
+  return node?.type === 'Identifier' && node.name === name;
+}
+
+function isStringLiteral(node) {
+  return node?.type === 'StringLiteral' || node?.type === 'Literal';
+}
+
+function getStaticEnvKey(node) {
+  if (!node) return null;
+  if (!node.computed && node.property?.type === 'Identifier') {
+    return /^[A-Z][A-Z0-9_]*$/.test(node.property.name) ? node.property.name : null;
+  }
+  if (node.computed && isStringLiteral(node.property) && typeof node.property.value === 'string') {
+    return /^[A-Z][A-Z0-9_]*$/.test(node.property.value) ? node.property.value : null;
+  }
+  return null;
+}
+
+function isProcessEnvObject(node) {
+  if (!node || (node.type !== 'MemberExpression' && node.type !== 'OptionalMemberExpression')) return false;
+  return isIdentifier(node.object, 'process') && !node.computed && isIdentifier(node.property, 'env');
+}
+
+function jsParserPlugins(ext) {
+  const plugins = ['importMeta'];
+  if (ext === '.jsx' || ext === '.tsx') plugins.push('jsx');
+  if (ext === '.ts' || ext === '.tsx') plugins.push('typescript');
+  return plugins;
+}
+
+function traverseAst(node, visit) {
+  if (!node || typeof node !== 'object') return;
+  visit(node);
+  for (const value of Object.values(node)) {
+    if (!value) continue;
+    if (Array.isArray(value)) {
+      for (const item of value) traverseAst(item, visit);
+      continue;
+    }
+    if (typeof value === 'object') traverseAst(value, visit);
+  }
+}
+
+function extractJsEnvRefs(content, ext) {
   const refs = new Set();
-  for (const pattern of CODE_PATTERNS) {
+  const ast = parse(content, {
+    sourceType: 'unambiguous',
+    errorRecovery: true,
+    plugins: jsParserPlugins(ext)
+  });
+
+  traverseAst(ast, (node) => {
+    if (node.type !== 'MemberExpression' && node.type !== 'OptionalMemberExpression') return;
+    if (!isProcessEnvObject(node.object)) return;
+    const key = getStaticEnvKey(node);
+    if (key) refs.add(key);
+  });
+
+  return refs;
+}
+
+function extractPatternRefs(content, patterns) {
+  const refs = new Set();
+  for (const pattern of patterns) {
     for (const match of content.matchAll(pattern)) refs.add(match[1]);
   }
   return refs;
+}
+
+export function extractEnvRefs(content, filePath = '') {
+  const ext = path.extname(filePath).toLowerCase();
+
+  if (JS_LIKE_EXTENSIONS.has(ext)) {
+    try {
+      return extractJsEnvRefs(content, ext);
+    } catch {
+      return extractPatternRefs(content, [
+        /process\.env\.([A-Z][A-Z0-9_]*)/g,
+        /process\.env\[['"]([A-Z][A-Z0-9_]*)['"]\]/g,
+        ...NON_JS_CODE_PATTERNS
+      ]);
+    }
+  }
+
+  return extractPatternRefs(content, NON_JS_CODE_PATTERNS);
 }
 
 function walk(dir, collected = []) {
@@ -72,7 +152,7 @@ export function analyzeProject(rootDir, options = {}) {
     }
 
     if (!CODE_FILE_EXTENSIONS.has(ext)) continue;
-    const refs = extractEnvRefs(fs.readFileSync(filePath, 'utf8'));
+    const refs = extractEnvRefs(fs.readFileSync(filePath, 'utf8'), filePath);
     for (const key of refs) {
       referencedVars.add(key);
       if (!referenceLocations.has(key)) referenceLocations.set(key, []);

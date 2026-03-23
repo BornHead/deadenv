@@ -15,9 +15,29 @@ test('extractEnvRefs detects cross-stack references', () => {
     console.log(process.env.API_KEY);
     os.getenv('PY_TOKEN')
     Environment.GetEnvironmentVariable("CS_CONN")
-    const String.fromEnvironment('FLAVOR')
-  `);
-  assert.deepEqual([...refs].sort(), ['API_KEY', 'CS_CONN', 'FLAVOR', 'PY_TOKEN']);
+    const flavor = String.fromEnvironment('FLAVOR')
+  `, 'mixed.py');
+  assert.deepEqual([...refs].sort(), ['CS_CONN', 'FLAVOR', 'PY_TOKEN']);
+});
+
+test('extractEnvRefs uses AST for JS env member access', () => {
+  const refs = extractEnvRefs(`
+    console.log(process
+      .env
+      .API_KEY);
+    console.log(process.env['SECOND_KEY']);
+  `, 'index.js');
+  assert.deepEqual([...refs].sort(), ['API_KEY', 'SECOND_KEY']);
+});
+
+test('extractEnvRefs ignores JS comments and strings', () => {
+  const refs = extractEnvRefs(`
+    // process.env.FAKE_COMMENT
+    const text = "process.env.FAKE_STRING";
+    /* process.env.BLOCK_COMMENT */
+    const real = process.env.REAL_KEY;
+  `, 'index.js');
+  assert.deepEqual([...refs].sort(), ['REAL_KEY']);
 });
 
 test('analyzeProject reports missing and unused vars', () => {
